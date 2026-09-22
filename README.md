@@ -1,8 +1,42 @@
 # M365 Mailbox -> PST Backup
 
-Backs up every folder of a specific Microsoft 365 / Exchange Online mailbox
-into a .pst file, authenticating with an app-only OAuth2 token
-(no interactive sign-in, no Basic Auth).
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)](M365Backup.csproj)
+
+A free, open-source command-line tool that backs up any **Microsoft 365 /
+Office 365 / Exchange Online mailbox to a standard `.pst` file** via the
+Microsoft Graph API, using app-only OAuth2 (client credentials) — no
+interactive sign-in, no Basic Auth, no per-mailbox delegated consent.
+
+Most tools that do this — exporting an M365 or Exchange Online mailbox to PST
+for e-discovery, offboarding, compliance archiving, or disaster recovery — are
+closed-source commercial products billed per mailbox or per seat (CodeTwo
+Backup, Stellar/SysTools Office 365 Backup, Mail Backup X, Veeam, etc.). This
+project does the same job as a self-hosted, scriptable, source-available
+alternative. The only cost is an [Aspose.Email for
+.NET](https://products.aspose.com/email/net/) license (or its free evaluation
+mode) — everything else here is free to use, fork, and modify under the MIT
+license.
+
+## Features
+
+- **Full mailbox export to PST** — every folder, recursively, via Microsoft
+  Graph (`Aspose.Email.Clients.Graph`).
+- **App-only OAuth2 auth** (MSAL client-credentials flow) — no signed-in user,
+  no mailbox owner interaction required; works against any mailbox in the
+  tenant once admin-consented.
+- **Date-range chunking** (`--from`/`--to`) to break very large mailboxes into
+  manageable pieces, e.g. year over year.
+- **Resumable, crash-safe backups** — an interrupted run picks up close to
+  where it left off instead of starting over.
+- **Automatic size-based PST chunking** so output files stay under a
+  configurable limit (default 15 GB).
+- **Job queue** for remote/automated triggering — submit a backup over SSH,
+  disconnect, and poll for status (including live percent-complete) later.
+  Ships with a systemd-ready worker script.
+- **Dropbox upload** via `rclone`, with zip + checksum verification before
+  the local copy is deleted.
+- Cross-platform wrapper scripts for both **PowerShell** and **bash**.
 
 ## Requirements
 
