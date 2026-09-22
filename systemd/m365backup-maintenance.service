@@ -1,0 +1,19 @@
+# Daily maintenance: waits for the queue to go idle, installs pending OS
+# package upgrades, then restarts m365backup-queue.service so any upgraded
+# library gets picked up at a controlled time instead of mid-backup. Never
+# reboots the host - see m365backup-weekly-reboot.* for that. Optional: skip
+# installing this (and its .timer) if you'd rather patch by hand.
+#
+# Must run as root (apt-get, systemctl restart) - runs as root by default
+# since no User= is set below.
+#
+# Install alongside the .timer file - see README "Scheduled maintenance and
+# reboots".
+
+[Unit]
+Description=M365 mailbox backup - daily maintenance (package upgrades + queue service restart)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/m365backup
+ExecStart=/opt/m365backup/queue/queue-maintenance.sh

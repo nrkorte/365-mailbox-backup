@@ -1,0 +1,17 @@
+# Fires m365backup-maintenance.service daily. Adjust OnCalendar to a quiet
+# hour for your mailboxes' time zone if 03:00 UTC isn't ideal.
+#
+# Install:
+#   sudo cp systemd/m365backup-maintenance.service systemd/m365backup-maintenance.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now m365backup-maintenance.timer
+
+[Unit]
+Description=Run m365backup-maintenance.service daily
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

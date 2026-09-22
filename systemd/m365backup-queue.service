@@ -1,0 +1,34 @@
+# The job queue worker - claims one job at a time from queue/pending and runs
+# it. See README.md "Deploying the worker as a service" before installing.
+#
+# Install:
+#   sudo cp systemd/m365backup-queue.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now m365backup-queue.service
+#
+# Edit User/Group/WorkingDirectory/ExecStart below to match your deployment
+# first - the placeholders assume a dedicated "m365backup" account and the
+# repo cloned to /opt/m365backup (see README for creating both).
+
+[Unit]
+Description=M365 mailbox backup - job queue worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=m365backup
+Group=m365backup
+WorkingDirectory=/opt/m365backup
+ExecStart=/opt/m365backup/queue/queue-worker.sh
+Restart=on-failure
+RestartSec=10
+
+# Queue-only overrides (optional) - see README "Queue-specific environment
+# variables". Program.cs's own M365_TENANT_ID/CLIENT_ID/CLIENT_SECRET/etc.
+# still come from .env in WorkingDirectory, not from here.
+#Environment=M365_BACKUP_DIR=/data/backups
+#Environment=M365_MAX_AUTO_RETRIES=5
+
+[Install]
+WantedBy=multi-user.target

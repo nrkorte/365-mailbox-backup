@@ -1,0 +1,19 @@
+# WARNING: this reboots the whole host. Only fires when the queue is idle
+# (checked once - see queue-weekly-reboot.sh), for OS upgrades that need a
+# reboot to apply (e.g. a new kernel) and that the daily maintenance service
+# can't pick up by only restarting m365backup-queue.service.
+#
+# Optional: this and its .timer are entirely separate from
+# m365backup-queue.service and m365backup-maintenance.*. Skip installing
+# both files if you don't want this host rebooting itself automatically -
+# nothing else here depends on it.
+#
+# Must run as root (apt-get, systemctl reboot).
+
+[Unit]
+Description=M365 mailbox backup - weekly package upgrades + reboot
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/m365backup
+ExecStart=/opt/m365backup/queue/queue-weekly-reboot.sh

@@ -1,0 +1,18 @@
+# Fires m365backup-weekly-reboot.service once a week. Pick a day/time your
+# team won't mind the host being briefly unavailable - see the WARNING in
+# m365backup-weekly-reboot.service before installing this.
+#
+# Install:
+#   sudo cp systemd/m365backup-weekly-reboot.service systemd/m365backup-weekly-reboot.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now m365backup-weekly-reboot.timer
+
+[Unit]
+Description=Run m365backup-weekly-reboot.service weekly
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

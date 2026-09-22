@@ -33,18 +33,46 @@ license.
   configurable limit (default 15 GB).
 - **Job queue** for remote/automated triggering — submit a backup over SSH,
   disconnect, and poll for status (including live percent-complete) later.
-  Ships with a systemd-ready worker script.
+  Ships with systemd unit files for the worker, plus optional daily
+  maintenance / weekly reboot timers.
 - **Dropbox upload** via `rclone`, with zip + checksum verification before
   the local copy is deleted.
 - Cross-platform wrapper scripts for both **PowerShell** and **bash**.
 
+## Prerequisites
+
+Software to have installed before following any of the steps below:
+
+- **[.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)** - to
+  build/run the backup tool itself (`dotnet run`, or `dotnet` invoked by the
+  job queue).
+- **`jq`** - used throughout the job queue scripts (`queue/*.sh`) to read and
+  write job state. `apt install jq` / `brew install jq` / `choco install jq`.
+- **`zip`** - used by `upload-mailbox-backup.sh` to combine multiple PST
+  chunks into one file before upload. `apt install zip`.
+- **[`rclone`](https://rclone.org)** - only needed for the Dropbox upload
+  step (manual or via the job queue) - see "Uploading a finished backup to
+  Dropbox" below.
+- A Linux host with **systemd**, only if you're deploying the job queue as a
+  long-running service (see "Job queue" below) rather than running backups
+  by hand with `dotnet run` / the wrapper scripts.
+
 ## Requirements
 
-1. **An Entra ID (Azure AD) app registration** with:
-   - A **tenant ID**, **client ID**, and a **client secret**.
-   - The Microsoft Graph **application permission `Mail.Read`** (or
-     `Mail.ReadWrite` if you'll ever need to write back), with **admin
-     consent granted**.
+1. **An Entra ID (Azure AD) app registration**, created once:
+   1. In the [Entra admin center](https://entra.microsoft.com) → **App
+      registrations** → **New registration**. Any name works; no redirect
+      URI is needed - this app never signs a user in interactively.
+   2. **Certificates & secrets** → **New client secret**. Copy its *value*
+      immediately (not the secret ID) - you can't retrieve it again later.
+      This is `M365_CLIENT_SECRET` below.
+   3. **API permissions** → **Add a permission** → **Microsoft Graph** →
+      **Application permissions** → add `Mail.Read` (or `Mail.ReadWrite` if
+      you'll ever need to write back) → **Grant admin consent for
+      &lt;tenant&gt;**. Granting consent requires a Global Administrator or
+      Privileged Role Administrator.
+   4. On the app's **Overview** page, copy the **Application (client) ID**
+      (`M365_CLIENT_ID`) and **Directory (tenant) ID** (`M365_TENANT_ID`).
 
    This permission gives the app access to *every* mailbox in the tenant, so
    it can target any mailbox by address without that mailbox's owner doing
@@ -60,6 +88,9 @@ license.
    # M365_PST_PATH, M365_CHUNK_SIZE_GB, M365_GRAPH_MAX_REQUESTS_PER_SECOND
    ```
 
+   The job queue has a couple of its own, separate environment variables -
+   see "Queue-specific environment variables" under "Job queue" below.
+
 3. **An Aspose.Email license** - this project uses the
    [Aspose.Email for .NET](https://products.aspose.com/email/net/) library,
    which runs in a limited evaluation mode without one. Get a
@@ -69,7 +100,14 @@ license.
    `Program.cs`, named `Aspose.Emailfor.NET.lic` (see `licensePath` in
    `Program.cs`).
 
-3a. If you really need this to be free perpetually, that is possible. The temporary use license is a 30 day license. Continue creating temporary licenses every 30 days for continuous use, though $1000 is a drop in the bucket for a perpetual license that allows this tool to work. I would get a temporary license first to test for 30 days, get a server to run this for you, make a way to call it easily, and once confirmed working, then buy the full license and place it in the root directory.
+   > **Staying on the free tier long-term:** the temporary license is good
+   > for 30 days; requesting a new one every 30 days keeps you on it
+   > indefinitely if that's preferable to buying one. A reasonable path: get
+   > a temporary license first, confirm the whole setup works end to end,
+   > *then* decide whether a perpetual license is worth it for your use.
+   > Check the license tier carefully against how you intend to run this -
+   > tiers differ on things like distributing the resulting software to
+   > other people, not just on price.
 
 ## Running a backup directly
 
@@ -149,7 +187,90 @@ mailbox) finishes - you only ever need to submit `backup` and poll it through
 to `done`/`failed`. `upload` is only for manually retrying the upload step on
 its own. See each script's header comment for the full field/behavior list.
 
+### Queue-specific environment variables
+
+These are read directly from the process environment by the bash scripts in
+`queue/` - unlike `M365_TENANT_ID`/etc. above, they're **not** read from a
+`.env` file, so set them where the worker actually runs (e.g. `Environment=`
+lines in the systemd unit below):
+
+- `M365_BACKUP_DIR` - where PST/zip output and resume state live. Defaults
+  to `/data/backups` - make sure that path exists, is writable by whichever
+  account runs the worker, and is sized for your largest mailbox (a full
+  export can be tens of GB).
+- `M365_MAX_AUTO_RETRIES` - how many consecutive times a job auto-resumes
+  after a crash/kill/unclean restart before giving up and leaving it
+  `failed` for a human. Defaults to `5`. See "Caveats" below.
+
+### Deploying the worker as a service
+
+`queue/queue-worker.sh` is a long-running process, not a one-off script - it
+needs to be started once and kept running (through reboots, crashes, etc.)
+for the queue to actually process anything. On Linux, that means a systemd
+service:
+
+1. Create a dedicated, unprivileged account to run it as (never run the
+   worker as root):
+   ```bash
+   sudo useradd --system --create-home --shell /usr/sbin/nologin m365backup
+   ```
+2. Clone/place this repo somewhere that account can read and write, e.g.
+   `/opt/m365backup`, with `.env` and (if using one) the Aspose license file
+   in place, owned by that account.
+3. Make sure `M365_BACKUP_DIR` (default `/data/backups`) exists and is
+   writable by that account.
+4. Copy [`systemd/m365backup-queue.service`](systemd/m365backup-queue.service)
+   to `/etc/systemd/system/`, edit its `User`/`Group`/`WorkingDirectory`/
+   `ExecStart` to match where you put the repo and which account owns it,
+   then:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now m365backup-queue.service
+   sudo systemctl status m365backup-queue.service   # confirm it's running
+   journalctl -u m365backup-queue.service -f        # follow its output
+   ```
+
+That's the whole requirement for the job queue to work - everything in
+"Calling the queue from Node.js" below assumes this service is running.
+
+### Scheduled maintenance and reboots (optional)
+
+Two more scripts under `queue/` exist for keeping a long-running deployment
+patched, and are **not required** for the queue to function - only install
+them if you want this host to patch and restart itself unattended:
+
+- **`queue/queue-maintenance.sh`** (daily) - waits for the queue to go idle,
+  installs pending OS package upgrades, then restarts
+  `m365backup-queue.service` so any upgraded library gets picked up at a
+  controlled time instead of mid-backup. Never reboots the host.
+- **`queue/queue-weekly-reboot.sh`** (weekly) - the same upgrade step, but
+  **also reboots the entire host** if it's idle at the time - for upgrades
+  (e.g. a new kernel) that only take effect after a reboot. Skips itself
+  entirely if the queue isn't idle when it checks.
+
+If you want them, install both the `.service` and matching `.timer` for
+each from [`systemd/`](systemd/) (unit files include the exact `cp`/
+`systemctl enable` commands):
+
+```bash
+sudo cp systemd/m365backup-maintenance.{service,timer} systemd/m365backup-weekly-reboot.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now m365backup-maintenance.timer
+sudo systemctl enable --now m365backup-weekly-reboot.timer   # optional - see WARNING in the .service file
+```
+
+Both need to run as root (`apt-get`, `systemctl restart`/`reboot`) - that's
+the default for a systemd service with no `User=` set, which is what the
+provided unit files do.
+
 ## Calling the queue from Node.js (remote SSH)
+
+Prerequisite: the calling host needs SSH key-based access to whichever
+account can read/write `queue/` on the host running
+`m365backup-queue.service` above (the dedicated `m365backup` account from
+"Deploying the worker as a service" works, or any account with access to
+that directory) - generate a key pair for this purpose and add it to that
+account's `~/.ssh/authorized_keys` if you haven't already.
 
 A remote caller never talks to the queue's filesystem directly - it opens an
 SSH session and invokes each queue script as a one-off command. The examples
