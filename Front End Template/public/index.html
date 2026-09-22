@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>M365 Backup Queue — Front End Template</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>M365 Backup Queue</h1>
+    <p class="subtitle">
+      Front end template - talks to <code>server.js</code>, which shells out
+      over SSH to the queue scripts. No auth, demo only.
+    </p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Enqueue a backup</h2>
+      <form id="submit-form">
+        <label>
+          Mailbox
+          <input type="email" name="mailbox" placeholder="someone@example.com" required />
+        </label>
+        <label>
+          From <span class="optional">(optional)</span>
+          <input type="date" name="from" />
+        </label>
+        <label>
+          To <span class="optional">(optional)</span>
+          <input type="date" name="to" />
+        </label>
+        <button type="submit">Enqueue backup</button>
+      </form>
+      <p id="submit-result" class="result"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Jobs</h2>
+      <div class="toolbar">
+        <label>
+          Filter by mailbox
+          <input type="email" id="mailbox-filter" placeholder="someone@example.com" />
+        </label>
+        <button id="refresh-btn" type="button">Refresh</button>
+        <span id="poll-indicator" class="poll-indicator"></span>
+      </div>
+      <table id="jobs-table">
+        <thead>
+          <tr>
+            <th>Job ID</th>
+            <th>Mailbox</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Phase</th>
+            <th>Progress</th>
+            <th>Submitted</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="jobs-body">
+          <tr><td colspan="8" class="empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

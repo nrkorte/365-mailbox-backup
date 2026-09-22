@@ -258,6 +258,14 @@ async function cancelJob(jobId) {
 }
 ```
 
+### Working example
+
+The snippets above are wired up into an actual running app in
+[`Front End Template/`](Front%20End%20Template/) - a small Node HTTP server
+plus a plain HTML/JS page showing enqueue, poll-status-with-progress, and
+cancel/dequeue against a real DOM. Not production-ready (no auth), but a
+concrete starting point instead of just code fragments.
+
 ## Caveats
 
 - **Cancelling a mailbox's backup deletes its output.** `queue-cancel.sh` is

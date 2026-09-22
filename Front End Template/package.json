@@ -1,0 +1,13 @@
+{
+  "name": "m365-backup-queue-frontend-template",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Demo web UI + HTTP server showing how to integrate with the job queue in ../queue",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
