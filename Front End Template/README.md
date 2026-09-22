@@ -66,3 +66,5 @@ sending the request.
   that's needed if you want it.
 - Progress percent requires an upfront metadata pass on the backend before
   it appears - see the "Caveats" section of the main README.
+
+<img width="947" height="666" alt="image" src="https://github.com/user-attachments/assets/f0052b5a-b7bb-47c8-8a22-10a02e1604b4" />
