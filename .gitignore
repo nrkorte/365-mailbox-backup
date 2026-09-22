@@ -1,0 +1,35 @@
+.env
+rclone-upload.env
+bin/
+obj/
+*.pst
+*.zip
+
+# Local convenience wrapper for git push/pull - hardcodes this server's
+# backupsvc account, not something other clones/environments need
+github.sh
+
+# Paid, personally-issued Aspose license (name/email/signature) - never commit
+*.lic
+
+# Claude Code session/runtime lock metadata - not part of the project
+.claude/
+
+# Runtime queue state: job records and logs contain real mailbox addresses
+# and full mailbox folder contents from actual backup runs, not source code.
+# Keep the directories themselves (via .gitkeep) so a fresh clone still has
+# the structure the queue scripts expect, but ignore everything written
+# into them at runtime.
+queue/jobs/*
+!queue/jobs/.gitkeep
+queue/logs/*
+!queue/logs/.gitkeep
+queue/progress/*
+!queue/progress/.gitkeep
+queue/pending/*
+!queue/pending/.gitkeep
+queue/running/*
+!queue/running/.gitkeep
+queue/seq
+queue/seq.lock
+queue/worker.lock
