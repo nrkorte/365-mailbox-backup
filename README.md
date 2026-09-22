@@ -69,6 +69,8 @@ license.
    `Program.cs`, named `Aspose.Emailfor.NET.lic` (see `licensePath` in
    `Program.cs`).
 
+3a. If you really need this to be free perpetually, that is possible. The temporary use license is a 30 day license. Continue creating temporary licenses every 30 days for continuous use, though $1000 is a drop in the bucket for a perpetual license that allows this tool to work. I would get a temporary license first to test for 30 days, get a server to run this for you, make a way to call it easily, and once confirmed working, then buy the full license and place it in the root directory.
+
 ## Running a backup directly
 
 ```
